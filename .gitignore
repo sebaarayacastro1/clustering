@@ -1,1 +1,13 @@
-data/
+__pycache__/
+.ipynb_checkpoints/
+.venv/
+.pytest_cache/
+*.pyc
+data/brutes/*
+data/traitees/*
+modeles/*
+resultats/*
+!data/brutes/.gitkeep
+!data/traitees/.gitkeep
+!modeles/.gitkeep
+!resultats/.gitkeep
