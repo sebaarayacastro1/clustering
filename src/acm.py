@@ -1,11 +1,60 @@
-"""Analyse des correspondances multiples, itérations historiques 1 et 2."""
+"""Analyse des correspondances multiples et regroupement final des modalités."""
 from itertools import combinations
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import prince
 from IPython.display import display
-from .visualisation import surligner_modalites_par_axe, surligner_resume, surligner_proximite
+from .visualisation import surligner_modalites_par_axe, surligner_resume
+
+# ===== SÉLECTION EXPLORATOIRE DES PAIRES PROCHES =====
+def selectionner_paires_proches(proximites, proportion=0.10):
+    """Retient les paires sous le quantile choisi ET sous moyenne - écart-type.
+
+    Les seuils sont calculés sur toutes les paires de modalités d'une même variable
+    (réunies dans le tableau). Ils sont exploratoires, pas un test statistique.
+    """
+    if not 0 < proportion <= 1:
+        raise ValueError("La proportion doit être comprise entre 0 (exclu) et 1.")
+    if proximites.empty:
+        raise ValueError("Aucune paire de modalités à comparer.")
+    distances = proximites["Distance"].astype(float)
+    if not np.isfinite(distances).all():
+        raise ValueError("Les distances doivent être finies.")
+    seuil_quantile = float(distances.quantile(proportion))
+    moyenne = float(distances.mean())
+    ecart_type = float(distances.std(ddof=0))
+    seuil_distance = moyenne - ecart_type
+    paires = proximites.copy().sort_values("Distance").reset_index(drop=True)
+    paires["Dans les plus proches (%)"] = paires["Distance"] <= seuil_quantile
+    paires["Sous moyenne - écart-type"] = paires["Distance"] <= seuil_distance
+    paires["Candidate ?"] = paires["Dans les plus proches (%)"] & paires["Sous moyenne - écart-type"]
+    statistiques = {
+        "proportion": proportion,
+        "seuil_quantile": seuil_quantile,
+        "moyenne": moyenne,
+        "ecart_type": ecart_type,
+        "seuil_distance": seuil_distance,
+        "nombre_paires": len(paires),
+        "nombre_candidates": int(paires["Candidate ?"].sum()),
+    }
+    return paires, statistiques
+
+
+def appliquer_regroupements_experimentaux(donnees, regroupements):
+    """Applique des fusions explicites sans modifier les données d'origine."""
+    resultat = donnees.copy()
+    for variable, groupes in regroupements.items():
+        if variable not in resultat.columns:
+            raise KeyError(f"Variable absente : {variable}")
+        for nouvelle_modalite, anciennes_modalites in groupes.items():
+            valeurs = resultat[variable].astype(str)
+            absentes = set(anciennes_modalites) - set(valeurs.unique())
+            if absentes:
+                raise ValueError(f"Modalités absentes pour {variable} : {sorted(absentes)}")
+            resultat.loc[valeurs.isin(anciennes_modalites), variable] = nouvelle_modalite
+    return resultat
+
 
 # ===== FONCTIONS DE CALCUL ET D'INERTIE =====
 def variable_de(modalite):
@@ -26,7 +75,7 @@ def inertie_benzecri(valeurs_propres, nb_var):
     return corrigees / corrigees.sum() * 100
 
 
-def executer_iteration_1(donnees_nettoyees, variables_a_retirer, *, graine=42, numero_iteration=1, n_axes_tableau=5, n_axes_proximite=5, facteur_seuil=1.0, seuil_proximite=0.20, variables_exclues=None):
+def executer_iteration_1(donnees_nettoyees, variables_a_retirer, *, graine=42, numero_iteration=1, n_axes_tableau=5, n_axes_proximite=5, facteur_seuil=1.0, proportion_selection=0.10, variables_exclues=None):
     """Reproduit les tableaux, diagnostics et graphiques de l’itération historique."""
     if variables_exclues is None:
         variables_exclues = ["id_anonyme", "statut_abonnement"]
@@ -143,7 +192,7 @@ def executer_iteration_1(donnees_nettoyees, variables_a_retirer, *, graine=42, n
             })
 
     proximites = pd.DataFrame(lignes_proximite).sort_values('Distance').reset_index(drop=True)
-    proximites['Proches ?'] = np.where(proximites['Distance'] < seuil_proximite, 'OUI', '')
+    proximites, statistiques_proximite = selectionner_paires_proches(proximites, proportion_selection)
 
     # ===== 8. AFFICHAGE DES RÉSULTATS PAR AXE =====
     print(f"\nSeuil de contribution 100/K = {seuil_contribution:.2f} %")
@@ -175,10 +224,11 @@ def executer_iteration_1(donnees_nettoyees, variables_a_retirer, *, graine=42, n
     print(f"Variables à examiner pour la prochaine itération : {variables_a_revoir if variables_a_revoir else 'aucune'}")
     print(f"variables_a_retirer à copier = {sorted(set(variables_a_retirer + variables_a_revoir))}")
 
-    print(f"\n=== Modalités proches (distance sur {n_axes_proximite} axes, seuil = {seuil_proximite}) ===")
-    nb_proches = int((proximites['Proches ?'] == 'OUI').sum())
-    print(f"{nb_proches} paire(s) proche(s) sur {len(proximites)} paires comparées")
-    display(proximites.head(30).style.apply(surligner_proximite, axis=None).format({'Distance': '{:.3f}'}))
+    print(f"\n=== Proximité des modalités sur les {n_axes_proximite} premiers axes ===")
+    print(f"Quantile ({proportion_selection:.0%}) : {statistiques_proximite['seuil_quantile']:.4f}")
+    print(f"Moyenne - écart-type : {statistiques_proximite['seuil_distance']:.4f}")
+    print(f"{statistiques_proximite['nombre_candidates']} paire(s) candidate(s) sur {len(proximites)}")
+    display(proximites.head(30).style.format({'Distance': '{:.3f}'}))
 
     # ===== 9. PLAN FACTORIEL (axes 1-2) =====
     contribue_plan = tableau_modalites[['Contrib Axe 1 (%)', 'Contrib Axe 2 (%)']].max(axis=1) > seuil_contribution
@@ -214,12 +264,12 @@ def executer_iteration_1(donnees_nettoyees, variables_a_retirer, *, graine=42, n
         "variables_acm", "indices_echantillon", "echantillon_acm",
         "tableau_disjonctif", "modele", "valeurs_propres", "brute",
         "benzecri", "df_inertie", "tableau_modalites", "resume_variables",
-        "variables_a_revoir", "proximites", "seuil_contribution",
+        "variables_a_revoir", "proximites", "statistiques_proximite", "seuil_contribution",
     )
     return {nom: resultats_locaux[nom] for nom in noms_resultats}
 
 
-def executer_iteration_2(donnees_nettoyees, variables_a_retirer, *, graine=42, numero_iteration=2, n_axes_tableau=5, n_axes_proximite=5, facteur_seuil=1.0, seuil_proximite=0.20, variables_exclues=None):
+def executer_iteration_2(donnees_nettoyees, variables_a_retirer, *, graine=42, numero_iteration=2, n_axes_tableau=5, n_axes_proximite=5, facteur_seuil=1.0, proportion_selection=0.10, variables_exclues=None):
     """Reproduit les tableaux, diagnostics et graphiques de l’itération historique."""
     if variables_exclues is None:
         variables_exclues = ["id_anonyme", "statut_abonnement"]
@@ -354,7 +404,7 @@ def executer_iteration_2(donnees_nettoyees, variables_a_retirer, *, graine=42, n
             })
 
     proximites = pd.DataFrame(lignes_proximite).sort_values('Distance').reset_index(drop=True)
-    proximites['Proches ?'] = np.where(proximites['Distance'] < seuil_proximite, 'OUI', '')
+    proximites, statistiques_proximite = selectionner_paires_proches(proximites, proportion_selection)
 
     # ===== 8. AFFICHAGE DES RÉSULTATS PAR AXE =====
     print(f"\nSeuil de contribution 100/K = {seuil_contribution:.2f} %")
@@ -386,10 +436,11 @@ def executer_iteration_2(donnees_nettoyees, variables_a_retirer, *, graine=42, n
     print(f"Variables à examiner pour la prochaine itération : {variables_a_revoir if variables_a_revoir else 'aucune'}")
     print(f"variables_a_retirer à copier = {sorted(set(variables_a_retirer + variables_a_revoir))}")
 
-    print(f"\n=== Modalités proches (distance sur {n_axes_proximite} axes, seuil = {seuil_proximite}) ===")
-    nb_proches = int((proximites['Proches ?'] == 'OUI').sum())
-    print(f"{nb_proches} paire(s) proche(s) sur {len(proximites)} paires comparées")
-    display(proximites.head(30).style.apply(surligner_proximite, axis=None).format({'Distance': '{:.3f}'}))
+    print(f"\n=== Proximité des modalités sur les {n_axes_proximite} premiers axes ===")
+    print(f"Quantile ({proportion_selection:.0%}) : {statistiques_proximite['seuil_quantile']:.4f}")
+    print(f"Moyenne - écart-type : {statistiques_proximite['seuil_distance']:.4f}")
+    print(f"{statistiques_proximite['nombre_candidates']} paire(s) candidate(s) sur {len(proximites)}")
+    display(proximites.head(30).style.format({'Distance': '{:.3f}'}))
 
     # ===== 9. PLAN FACTORIEL (axes 1-2) =====
     contribue_plan = tableau_modalites[['Contrib Axe 1 (%)', 'Contrib Axe 2 (%)']].max(axis=1) > seuil_contribution
@@ -419,6 +470,32 @@ def executer_iteration_2(donnees_nettoyees, variables_a_retirer, *, graine=42, n
         "variables_acm", "indices_echantillon", "echantillon_acm",
         "tableau_disjonctif", "modele", "valeurs_propres", "brute",
         "benzecri", "df_inertie", "tableau_modalites", "resume_variables",
-        "variables_a_revoir", "proximites", "seuil_contribution",
+        "variables_a_revoir", "proximites", "statistiques_proximite", "seuil_contribution",
     )
     return {nom: resultats_locaux[nom] for nom in noms_resultats}
+
+
+def executer_iteration_3(donnees_nettoyees, regroupements, *, variables_a_retirer=None, **parametres):
+    """Teste les regroupements validés sur le même échantillon que l'itération 2."""
+    if not regroupements:
+        raise ValueError("Définir au moins un regroupement avant l'itération 3.")
+    donnees_modifiees = appliquer_regroupements_experimentaux(donnees_nettoyees, regroupements)
+    return executer_iteration_2(
+        donnees_modifiees,
+        variables_a_retirer=["zone_geo_rec"] if variables_a_retirer is None else variables_a_retirer,
+        numero_iteration=3,
+        **parametres,
+    )
+
+
+def charger_regroupements_acm_finaux(chemin_configuration):
+    """Charge les fusions finales, distinctes des recodifications historiques."""
+    from pathlib import Path
+    import yaml
+
+    with Path(chemin_configuration).open(encoding="utf-8") as fichier:
+        configuration = yaml.safe_load(fichier) or {}
+    regroupements = configuration.get("regroupements_acm_finaux", {})
+    if not isinstance(regroupements, dict):
+        raise ValueError("La section regroupements_acm_finaux doit être un dictionnaire.")
+    return regroupements

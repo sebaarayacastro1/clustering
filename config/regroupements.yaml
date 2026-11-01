@@ -117,3 +117,8 @@ regroupements:
       Amerique_Sud: 04_Reste_du_Monde
       Afrique: 04_Reste_du_Monde
       Autre/Inconnu: 04_Reste_du_Monde
+regroupements_acm_finaux:
+  avg_songs_sessions_rec:
+    03_10_et_plus:
+    - 03_Eleve_10_a_20
+    - 04_Tres_eleve_20_et_plus
