@@ -1,0 +1,119 @@
+regroupements:
+  anciennete_client_rec:
+    source: anciennete_client_tr
+    correspondances:
+      00_moins_1_mois: 01_Moins_de_6_mois
+      01_1_mois: 01_Moins_de_6_mois
+      02_2_mois: 01_Moins_de_6_mois
+      03_3_mois: 01_Moins_de_6_mois
+      04_4_mois: 01_Moins_de_6_mois
+      05_5_mois: 01_Moins_de_6_mois
+      06_6_mois: 02_6_a_12_mois
+      07_7a9_mois: 02_6_a_12_mois
+      08_10a12_mois: 02_6_a_12_mois
+      09_13a15_mois: 03_1_a_2_ans
+      10_16a18_mois: 03_1_a_2_ans
+      11_19a21_mois: 03_1_a_2_ans
+      12_22a24_mois: 03_1_a_2_ans
+      13_25a30_mois: 04_2_a_4_ans
+      14_31a36_mois: 04_2_a_4_ans
+      15_37a48_mois: 04_2_a_4_ans
+      16_49a60_mois: 05_Plus_de_4_ans
+      17_61a84_mois: 05_Plus_de_4_ans
+      18_85a120_mois: 05_Plus_de_4_ans
+      19_121_mois_et_plus: 05_Plus_de_4_ans
+  anciennete_abonnement_rec:
+    source: anciennete_abonnement_tr
+    correspondances:
+      00_moins_1_mois: 01_Moins_de_3_mois
+      01_1_mois: 01_Moins_de_3_mois
+      02_2_mois: 01_Moins_de_3_mois
+      03_3_mois: 02_3_a_5_mois
+      04_4_mois: 02_3_a_5_mois
+      05_5_mois: 02_3_a_5_mois
+      06_6_mois: 03_6_a_12_mois
+      07_7a9_mois: 03_6_a_12_mois
+      08_10a12_mois: 03_6_a_12_mois
+      09_13a15_mois: 04_1_a_2_ans
+      10_16a18_mois: 04_1_a_2_ans
+      11_19a21_mois: 04_1_a_2_ans
+      12_22a24_mois: 04_1_a_2_ans
+      13_25a30_mois: 05_Plus_de_2_ans
+      14_31a36_mois: 05_Plus_de_2_ans
+      15_37a48_mois: 05_Plus_de_2_ans
+      16_49a60_mois: 05_Plus_de_2_ans
+      17_61a84_mois: 05_Plus_de_2_ans
+      18_85a120_mois: 05_Plus_de_2_ans
+      19_121_mois_et_plus: 05_Plus_de_2_ans
+  methode_paiement_rec:
+    source: methode_paiement
+    correspondances:
+      Stripe: web_et_direct
+      Paypal: web_et_direct
+      Apple: telephone
+      Android: telephone
+      Amazon: Amazon
+      Credit: Credit
+      Others: Others
+  valeur_12M_rec:
+    source: valeur_12M_tr
+    correspondances:
+      00_moins_10: 01_Moins_de_15
+      01_10a15: 01_Moins_de_15
+      02_15a20: 02_15_a_30
+      03_20a25: 02_15_a_30
+      04_25a30: 02_15_a_30
+      05_30a40: 03_30_a_50
+      06_40a50: 03_30_a_50
+      07_50a60: 04_50_a_90
+      08_60a70: 04_50_a_90
+      09_70a90: 04_50_a_90
+      10_90a110: 05_Plus_de_90
+      11_110_et_plus: 05_Plus_de_90
+  avg_sessions_actifs_rec:
+    source: avg_sessions_actifs_tr
+    correspondances:
+      00_pas_de_session: 00_Inactif
+      01_moins_1: 01_Faible_1_a_2
+      02_1a2: 01_Faible_1_a_2
+      03_2a3: 02_Moyen_2_a_4
+      04_3a4: 02_Moyen_2_a_4
+      05_4a5: 03_Eleve_4_a_8
+      06_5a6: 03_Eleve_4_a_8
+      07_6a8: 03_Eleve_4_a_8
+      08_8a10: 04_Tres_eleve_8_et_plus
+      09_10a15: 04_Tres_eleve_8_et_plus
+      10_15a20: 04_Tres_eleve_8_et_plus
+      11_20a30: 04_Tres_eleve_8_et_plus
+      12_30a50: 04_Tres_eleve_8_et_plus
+      13_50_et_plus: 04_Tres_eleve_8_et_plus
+  avg_songs_sessions_rec:
+    source: avg_songs_sessions_tr
+    correspondances:
+      00_pas_de_session: 00_Inactif
+      01_1a2: 01_Faible_1_a_5
+      02_2a3: 01_Faible_1_a_5
+      03_3a4: 01_Faible_1_a_5
+      04_4a5: 01_Faible_1_a_5
+      05_5a6: 02_Moyen_5_a_10
+      06_6a8: 02_Moyen_5_a_10
+      07_8a10: 02_Moyen_5_a_10
+      08_10a15: 03_Eleve_10_a_20
+      09_15a20: 03_Eleve_10_a_20
+      10_20a30: 04_Tres_eleve_20_et_plus
+      11_30a50: 04_Tres_eleve_20_et_plus
+      12_50_et_plus: 04_Tres_eleve_20_et_plus
+  zone_geo_rec:
+    source: zone_geo
+    correspondances:
+      US: 01_US
+      Europe: 02_Europe
+      FR: 02_Europe
+      UK: 02_Europe
+      CA: 03_CA
+      Oceanie: 04_Reste_du_Monde
+      Asie: 04_Reste_du_Monde
+      Amerique_Nord_Autre: 04_Reste_du_Monde
+      Amerique_Sud: 04_Reste_du_Monde
+      Afrique: 04_Reste_du_Monde
+      Autre/Inconnu: 04_Reste_du_Monde
