@@ -1,0 +1,17 @@
+graine: 42
+fraction_echantillon: 0.20
+n_composantes: 15
+n_axes_tableau: 5
+n_axes_proximite: 5
+facteur_seuil: 1.0
+seuil_proximite_historique: 0.20
+n_axes_cah: 4
+variables_exclues:
+  - id_anonyme
+  - statut_abonnement
+iterations:
+  - numero: 1
+    variables_a_retirer: []
+  - numero: 2
+    variables_a_retirer:
+      - zone_geo_rec
