@@ -1,0 +1,28 @@
+# Dépendances utilisées pour les étapes 1 et 2 du projet Karafun
+# Versions relevées dans l'environnement .venv fourni.
+
+# Analyse des données et ACM
+numpy==2.3.5
+pandas==3.1.0
+prince==0.21.0
+PyYAML==6.0.3
+
+# CAH, évaluation et visualisations
+scipy==1.17.1
+fastcluster==1.3.0
+scikit-learn==1.9.1
+matplotlib==3.11.2
+seaborn==0.13.2
+
+# Enregistrement et rechargement des modèles
+joblib==1.6.0
+
+# Notebooks et environnement interactif
+ipython==8.12.3
+ipykernel==7.4.0
+jupyterlab==4.6.5
+
+# Tests automatisés
+pytest==9.2.0
+
+# Streamlit sera ajouté lors de l'étape 4, lorsque l'application sera créée.
