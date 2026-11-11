@@ -4,24 +4,24 @@
 
 Ce projet vise à **segmenter les clients Karafun** selon leurs caractéristiques et leurs comportements, à partir d'une **analyse des correspondances multiples (ACM)** suivie d'une **classification ascendante hiérarchique (CAH)** avec la méthode de Ward.
 
-La segmentation retenue comprend **cinq groupes métier**. La suite du projet consiste à entraîner un classifieur supervisé pour affecter les autres clients, puis à proposer une interface **Streamlit** permettant de classer un nouveau client ou de réévaluer un client existant **sans recalculer la CAH ni réajuster l'ACM**.
+La segmentation retenue comprend **cinq groupes métier**. Une **régression logistique multinomiale** reproduit les groupes CAH sur les quatre coordonnées de l'ACM. Les affectations ont été étendues à la base historique. Une première interface **Streamlit** permet désormais de prédire le segment d'un client à partir des modalités finales de l'ACM, sans recalculer la CAH ni réajuster les modèles. L'enregistrement et la modification persistante des clients ne font pas partie du périmètre initial ; ils peuvent faire l'objet d'une évolution ultérieure.
 
 Le code est organisé en modules réutilisables (`src/`) et en notebooks correspondant aux différentes étapes.
 
 ## État d'avancement
 
-| Étape | Statut | Résultat ou objectif |
+| Étape | Statut | Résultat |
 | --- | --- | --- |
-| **1. Choix et interprétation des clusters** | **Terminée pour le périmètre retenu** | ACM définitive, CAH sur 20 000 clients, choix métier de **k = 5**. |
-| **2. Entraînement d'un classifieur** | À réaliser | Apprendre à reproduire les étiquettes de la CAH et évaluer les prédictions. |
-| **3. Affectation du reste de la base** | À réaliser | Prédire les groupes des clients non inclus dans la CAH de référence. |
-| **4. Outil réutilisable** | À réaliser | Interface Streamlit de prédiction et de mise à jour des clients. |
+| **1. Choix et interprétation des clusters** | **Terminée** | ACM 3 : 10 variables actives et 42 modalités ; CAH Ward sur 20 000 clients ; **k = 5**. |
+| **2. Classification supervisée** | **Terminée** | Régression logistique multinomiale ; accuracy de **95,05 %** et F1 macro de **95,33 %** sur 4 000 clients de test. |
+| **3. Extrapolation à la base complète** | **Terminée** | **341 091** clients affectés sur **341 092** enregistrements ; un enregistrement exclu selon la préparation initiale. |
+| **4. Application Streamlit** | **Terminée** | Interface de prédiction individuelle opérationnelle ; gestion persistante des clients facultative et hors périmètre initial. |
 
 > **Périmètre de la décision :** la partition de référence repose sur une CAH de **20 000 clients**, les **quatre premiers axes** de l'ACM définitive, la méthode **Ward**, **k = 5** et une **graine aléatoire fixée à 42**. La décision privilégie l'interprétabilité des groupes et leur intérêt métier ; elle ne constitue pas une preuve d'optimalité ou de stabilité universelle.
 
 ## Environnement de développement
 
-Le projet utilise **Python 3.11**, indiqué dans `.python-version`, et un environnement virtuel local **`.venv`**. Les dépendances figurent dans `requirements.txt`. Aucun gestionnaire d'environnement supplémentaire, tel que `uv`, n'est nécessaire.
+Le projet utilise **Python 3.11**, indiqué dans `.python-version`, et un environnement virtuel local **`.venv`**. Les dépendances scientifiques figurent dans `requirements.txt` ; les dépendances de l’interface sont complétées dans `app/requirements_streamlit.txt`. Aucun gestionnaire d'environnement supplémentaire, tel que `uv`, n'est nécessaire.
 
 Chaque collaborateur crée son propre environnement virtuel. Le dossier `.venv/` ne doit pas être versionné.
 
@@ -72,7 +72,7 @@ python -m pip check
 
 La version de Python doit être **3.11.x**.
 
-> **Reproductibilité :** si `requirements.txt` ne fixe pas les versions exactes, deux collaborateurs peuvent installer des versions différentes des bibliothèques. Il conviendra de figer les versions validées avant la livraison opérationnelle.
+> **Reproductibilité :** `requirements.txt` fixe les versions de l’environnement scientifique de référence. La contrainte de version de Streamlit figure séparément dans `app/requirements_streamlit.txt` ; vérifier la compatibilité de l’ensemble dans l’environnement de livraison.
 
 ### 4. Sélectionner l'interpréteur dans VS Code
 
@@ -83,15 +83,16 @@ La version de Python doit être **3.11.x**.
 
 ### 5. Données et ordre des notebooks
 
-Le jeu de données d'origine est disponible à l'emplacement `data/brutes/td_clustering_karafun.csv` dans l'organisation actuelle du dépôt. Vérifier la présence de ce fichier et les chemins utilisés par les notebooks.
+Le fichier source historique est attendu à l'emplacement `data/brutes/td_clustering_karafun.csv`. Les modèles et résultats exportés doivent être présents aux chemins attendus par les modules. Les fichiers volumineux ne sont pas nécessairement versionnés dans Git.
 
 | Notebook | Rôle | État |
 | --- | --- | --- |
 | `01_exploration.ipynb` | Exploration des données clients | Réalisé |
-| `02_acm.ipynb` | Itérations et choix de l'ACM définitive | Réalisé |
-| `03_cah.ipynb` | CAH avec Ward et comparaison des partitions | Réalisé |
-| `04_interpretation_clusters.ipynb` | Profils métier, scissions et choix de **k = 5** | Réalisé |
-| `05_classification.ipynb` | Entraînement du classifieur supervisé | **Prochaine étape : à développer** |
+| `02_acm.ipynb` | Construction et choix de l'ACM définitive | Réalisé |
+| `03_cah.ipynb` | CAH Ward et comparaison des partitions | Réalisé |
+| `04_interpretation_clusters.ipynb` | Profils métier, variable géographique illustrative et choix de **k = 5** | Réalisé |
+| `05_classification.ipynb` | Entraînement et évaluation de la régression logistique multinomiale | Réalisé |
+| `06_extrapolation_clusters.ipynb` | Affectation des clients de l'ACM et de la base complète | Réalisé |
 
 Pour utiliser JupyterLab :
 
@@ -105,10 +106,40 @@ jupyter lab
 python -m pytest
 ```
 
+Pour contrôler spécifiquement le moteur de prédiction et l'interface :
+
+```bash
+python -m pytest tests/test_prediction_client.py tests/test_prediction_client_integration.py tests/test_modalites_interface.py -v -rs
+```
+
+Les tests d'intégration s'appuient sur les exports et modèles de l'étape 3 ; ils doivent être exécutés dans l'environnement du projet contenant ces artefacts.
+
+### 7. Lancer l'application Streamlit
+
+Installer les dépendances complémentaires (depuis la racine du dépôt) :
+
+```bash
+python -m pip install -r app/requirements_streamlit.txt
+```
+
+Démarrer l'application :
+
+```bash
+python -m streamlit run app/streamlit_app.py
+```
+
+L'interface présente **les modalités finales de l'ACM 3** sous forme de questions et de libellés français lisibles, sans afficher les préfixes de tri techniques. Par exemple, les valeurs sources `Apple` et `Android` sont représentées par l'unique catégorie finale « Paiement sur téléphone (Apple / Android) ». Pour l'ancienneté d'abonnement, la catégorie finale `05_Plus_de_2_ans` est affichée comme « Plus de 2 ans ». Le texte affiché est distinct de la valeur source représentative envoyée au moteur, qui applique les regroupements pour restituer la modalité exacte attendue par l'ACM.
+
+L'interface permet de **prédire le segment d'un client** et d'afficher un tableau des cinq scores estimés. **Aucune création, recherche ou modification de client dans une base de données n'est nécessaire** pour cette fonctionnalité : le formulaire n'enregistre pas les données saisies dans une base persistante. Les scores ne sont pas calibrés et ne correspondent pas à des probabilités de churn futur.
+
 ## Organisation du dépôt
 
 ```text
 clustering/
+├── app/
+│   ├── streamlit_app.py
+│   ├── modalites_interface.py
+│   └── requirements_streamlit.txt
 ├── config/
 │   ├── parametres.yaml
 │   └── regroupements.yaml
@@ -121,36 +152,39 @@ clustering/
 │   ├── 02_acm.ipynb
 │   ├── 03_cah.ipynb
 │   ├── 04_interpretation_clusters.ipynb
-│   └── 05_classification.ipynb
+│   ├── 05_classification.ipynb
+│   └── 06_extrapolation_clusters.ipynb
 ├── src/
 │   ├── preparation.py
 │   ├── acm.py
-│   ├── visualisation.py
-│   ├── proximite_modalites.py
 │   ├── classification_hierarchique.py
+│   ├── classification_supervisee.py
+│   ├── extrapolation_clusters.py
+│   ├── prediction_client.py
 │   ├── interpretation.py
-│   └── affectation_clients.py
+│   └── ...
 ├── tests/
+│   ├── test_prediction_client.py
+│   ├── test_prediction_client_integration.py
+│   ├── test_modalites_interface.py
+│   └── ...
 ├── resultats/
-│   └── cah/
+│   ├── cah/
+│   └── extrapolation/
 ├── modeles/
-├── archives/
-│   └── notebook_original_execute.ipynb
 ├── .python-version
 ├── requirements.txt
 └── README.md
 ```
 
-- **`config/`** : paramètres de calcul et règles de recodification des modalités.
+- **`config/`** : paramètres et règles de recodification.
 - **`data/`** : données brutes et préparées.
-- **`notebooks/`** : expérimentations, visualisations, interprétation et modélisation.
-- **`src/`** : fonctions réutilisables, indépendantes des notebooks.
-- **`tests/`** : vérification des transformations et des fonctions.
-- **`resultats/`** : tableaux, figures et partitions exportées.
-- **`modeles/`** : modèles et métadonnées nécessaires à la réutilisation.
-- **`archives/`** : conservation de travaux historiques.
-
-Les futurs modules de prédiction et l'application Streamlit seront ajoutés lors des étapes correspondantes ; ils ne font pas encore partie de la chaîne opérationnelle.
+- **`notebooks/`** : explorations, modélisation, interprétation et extrapolation.
+- **`src/`** : fonctions de préparation, de projection et de prédiction réutilisables.
+- **`app/`** : interface de prédiction Streamlit et adaptation des libellés.
+- **`tests/`** : tests unitaires et d'intégration.
+- **`resultats/`** : tableaux, figures et affectations exportées.
+- **`modeles/`** : modèles sauvegardés et métadonnées nécessaires à la prédiction.
 
 ## Méthodologie et résultats
 
@@ -208,27 +242,45 @@ Les noms décrivent les tendances dominantes des groupes : ils ne signifient pas
 - Le résultat dépend du choix des axes factoriels et peut être sensible à l'échantillonnage. **Aucune forte stabilité de la partition n'est revendiquée** dans le périmètre retenu.
 - L'étiquetage métier décrit des profils observés ; il ne démontre pas l'efficacité des actions commerciales envisagées.
 
-## Étapes suivantes
+## Classification supervisée et extrapolation
 
-### Étape 2 — Entraîner un classifieur
+### Étape 2 — Classifieur opérationnel
 
-Le prochain travail sera réalisé dans **`notebooks/05_classification.ipynb`**, qui reste **à développer**. La partition CAH de référence (`k = 5`, graine 42) servira de source d'étiquettes pour les 20 000 clients.
+Le notebook `05_classification.ipynb` entraîne une **régression logistique multinomiale** sur les **quatre premières coordonnées factorielles** des 20 000 clients étiquetés par la CAH (G1 à G5). Sur le jeu de test de 4 000 clients, l'accuracy atteint **95,05 %** et le F1-score macro **95,33 %**.
 
-Le classifieur utilisera les **quatre coordonnées factorielles** correspondantes comme variables explicatives. Une **régression logistique multinomiale** constituera un premier modèle de référence, éventuellement comparé à une méthode non linéaire.
+Ces métriques mesurent la capacité du classifieur à **reproduire la partition CAH de référence**, pas une prédiction de churn futur ni une validation indépendante de la stabilité des groupes.
 
-Une évaluation sur des observations mises de côté mesurera notamment l'exactitude, le **F1-score macro**, le rappel par groupe et les confusions entre segments. Cette évaluation mesurera la capacité à **reproduire les étiquettes de la CAH**, et non la validité intrinsèque de la segmentation.
+### Étape 3 — Extrapolation à la base historique
 
-### Étape 3 — Affecter le reste de la base
+Le notebook `06_extrapolation_clusters.ipynb` conserve les 20 000 étiquettes CAH, classe 48 218 clients ayant déjà des coordonnées ACM et projette 272 873 autres clients avec l'ACM sauvegardée avant leur affectation supervisée.
 
-Après validation du classifieur, les **48 218 clients de l'échantillon ACM non inclus dans les 20 000 clients de référence** pourront recevoir un groupe prédit. Les sorties distingueront les **étiquettes CAH de référence** des **affectations prédites**.
+| Origine de l'affectation | Effectif |
+| --- | ---: |
+| Étiquettes CAH conservées | 20 000 |
+| Prédictions sur coordonnées ACM existantes | 48 218 |
+| Projection ACM puis prédiction | 272 873 |
+| Enregistrement exclu par la préparation (`methode_paiement == "Others"`) | 1 |
+| **Total des enregistrements** | **341 092** |
 
-### Étape 4 — Proposer une application Streamlit
+**341 091 clients sont affectés** à l'un des cinq groupes. La reprojection de 200 individus connus a reproduit leurs coordonnées ACM avec un écart maximal de **5,551 × 10⁻¹⁷**. La proximité des distributions de groupes entre la CAH et la base complète indique une cohérence descriptive, sans garantir l'exactitude individuelle de chaque affectation prédite.
 
-Une application Streamlit devra permettre de saisir les caractéristiques d'un nouveau client ou de mettre à jour celles d'un client existant, puis de prédire son groupe.
+### Étape 4 — Application Streamlit
 
-Le traitement réutilisera les **mêmes règles de préparation et de recodification**, l'**ACM ajustée** pour projeter les observations sur les quatre axes et le **classifieur enregistré**. Ni la CAH ni l'ACM ne devront être réajustées à chaque prédiction. La gestion des modalités inconnues, des historiques insuffisants et de l'enregistrement des mises à jour devra être définie avant la mise en service.
+L'application Streamlit constitue une interface de **prédiction individuelle** : à partir des caractéristiques d'un client, elle applique les regroupements de l'ACM définitive, projette l'observation à l'aide du modèle ACM sauvegardé, puis utilise la régression logistique multinomiale pour attribuer l'un des cinq segments **G1 à G5**.
 
-Une **API séparée n'est pas indispensable** : Streamlit pourra appeler directement les fonctions de prédiction du projet.
+Le formulaire présente directement les **modalités finales regroupées**, avec des questions en français et des libellés lisibles. Par exemple, une catégorie d'ancienneté s'affiche sous la forme « Plus de 2 ans » plutôt que sous son code technique. La conversion interne conserve les codes attendus par les modèles sauvegardés.
+
+Le résultat affiche le **groupe prédit, son nom métier et un tableau des cinq scores**. L'application ne recalcule ni la CAH ni l'ACM et ne réentraîne pas le classifieur. Les scores indiquent la répartition estimée entre les cinq groupes ; ils ne représentent pas un risque de churn et leur calibration n'a pas été évaluée.
+
+Cette version répond à l'objectif de **classer un nouveau client sans refaire la segmentation**. Elle ne conserve pas les données du formulaire dans une base persistante. La gestion d'un historique de clients constitue une fonctionnalité distincte et facultative.
+
+### Améliorations possibles — hors périmètre initial
+
+Deux évolutions sont identifiées, sans remettre en cause le fonctionnement actuel de la classification :
+
+1. **Préciser l'unité de la valeur client (`valeur_12M`).** La variable `valeur_12M_rec` est présentée sous forme d'intervalles numériques, mais la devise ou l'unité métier exacte n'a pas été confirmée à partir de la documentation source. Vérifier cette définition avant d'ajouter un symbole monétaire (par exemple `€`) ou de reformuler la question. Cette amélioration concerne les libellés et ne doit pas modifier les modalités transmises à l'ACM.
+
+2. **Ajouter une gestion persistante des clients (facultatif).** Dans une évolution ultérieure, l'application pourrait permettre d'enregistrer de nouveaux clients, de rechercher les clients historiques et de modifier leurs caractéristiques en recalculant leur segment. Un stockage local **SQLite** pourrait suffire pour un prototype ; une base externe pourrait être envisagée si les besoins de déploiement évoluent. Aucune base de données ni API n'est nécessaire pour la prédiction individuelle actuelle.
 
 ## Bonnes pratiques de collaboration
 
