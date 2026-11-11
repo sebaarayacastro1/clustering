@@ -4,7 +4,7 @@
 
 Ce projet vise à **segmenter les clients Karafun** selon leurs caractéristiques et leurs comportements, à partir d'une **analyse des correspondances multiples (ACM)** suivie d'une **classification ascendante hiérarchique (CAH)** avec la méthode de Ward.
 
-La segmentation retenue comprend **cinq groupes métier**. Une **régression logistique multinomiale** reproduit les groupes CAH sur les quatre coordonnées de l'ACM. Les affectations ont été étendues à la base historique. Une première interface **Streamlit** permet désormais de prédire le segment d'un client à partir des modalités finales de l'ACM, sans recalculer la CAH ni réajuster les modèles. L'enregistrement et la modification persistante des clients restent à développer.
+La segmentation retenue comprend **cinq groupes métier**. Une **régression logistique multinomiale** reproduit les groupes CAH sur les quatre coordonnées de l'ACM. Les affectations ont été étendues à la base historique. Une première interface **Streamlit** permet désormais de prédire le segment d'un client à partir des modalités finales de l'ACM, sans recalculer la CAH ni réajuster les modèles. L'enregistrement et la modification persistante des clients ne font pas partie du périmètre initial ; ils peuvent faire l'objet d'une évolution ultérieure.
 
 Le code est organisé en modules réutilisables (`src/`) et en notebooks correspondant aux différentes étapes.
 
@@ -15,7 +15,7 @@ Le code est organisé en modules réutilisables (`src/`) et en notebooks corresp
 | **1. Choix et interprétation des clusters** | **Terminée** | ACM 3 : 10 variables actives et 42 modalités ; CAH Ward sur 20 000 clients ; **k = 5**. |
 | **2. Classification supervisée** | **Terminée** | Régression logistique multinomiale ; accuracy de **95,05 %** et F1 macro de **95,33 %** sur 4 000 clients de test. |
 | **3. Extrapolation à la base complète** | **Terminée** | **341 091** clients affectés sur **341 092** enregistrements ; un enregistrement exclu selon la préparation initiale. |
-| **4. Application Streamlit** | **En cours — commits 1 à 3** | Moteur de prédiction individuelle, tests et formulaire de prédiction disponibles ; gestion persistante des clients et documentation finale à venir. |
+| **4. Application Streamlit** | **Terminée** | Interface de prédiction individuelle opérationnelle ; gestion persistante des clients facultative et hors périmètre initial. |
 
 > **Périmètre de la décision :** la partition de référence repose sur une CAH de **20 000 clients**, les **quatre premiers axes** de l'ACM définitive, la méthode **Ward**, **k = 5** et une **graine aléatoire fixée à 42**. La décision privilégie l'interprétabilité des groupes et leur intérêt métier ; elle ne constitue pas une preuve d'optimalité ou de stabilité universelle.
 
@@ -114,7 +114,7 @@ python -m pytest tests/test_prediction_client.py tests/test_prediction_client_in
 
 Les tests d'intégration s'appuient sur les exports et modèles de l'étape 3 ; ils doivent être exécutés dans l'environnement du projet contenant ces artefacts.
 
-### 7. Lancer la première interface Streamlit
+### 7. Lancer l'application Streamlit
 
 Installer les dépendances complémentaires (depuis la racine du dépôt) :
 
@@ -130,7 +130,7 @@ python -m streamlit run app/streamlit_app.py
 
 L'interface présente **les modalités finales de l'ACM 3** sous forme de questions et de libellés français lisibles, sans afficher les préfixes de tri techniques. Par exemple, les valeurs sources `Apple` et `Android` sont représentées par l'unique catégorie finale « Paiement sur téléphone (Apple / Android) ». Pour l'ancienneté d'abonnement, la catégorie finale `05_Plus_de_2_ans` est affichée comme « Plus de 2 ans ». Le texte affiché est distinct de la valeur source représentative envoyée au moteur, qui applique les regroupements pour restituer la modalité exacte attendue par l'ACM.
 
-L'interface permet **uniquement de prédire** un segment et d'afficher un tableau des cinq scores estimés. À ce stade, **aucun client n'est ajouté, recherché ou modifié dans une base persistante**. Les scores ne sont pas calibrés et ne correspondent pas à des probabilités de churn futur.
+L'interface permet de **prédire le segment d'un client** et d'afficher un tableau des cinq scores estimés. **Aucune création, recherche ou modification de client dans une base de données n'est nécessaire** pour cette fonctionnalité : le formulaire n'enregistre pas les données saisies dans une base persistante. Les scores ne sont pas calibrés et ne correspondent pas à des probabilités de churn futur.
 
 ## Organisation du dépôt
 
@@ -264,21 +264,23 @@ Le notebook `06_extrapolation_clusters.ipynb` conserve les 20 000 étiquettes CA
 
 **341 091 clients sont affectés** à l'un des cinq groupes. La reprojection de 200 individus connus a reproduit leurs coordonnées ACM avec un écart maximal de **5,551 × 10⁻¹⁷**. La proximité des distributions de groupes entre la CAH et la base complète indique une cohérence descriptive, sans garantir l'exactitude individuelle de chaque affectation prédite.
 
-### Étape 4 — Application et jalons de développement
+### Étape 4 — Application Streamlit
 
-Les changements sont livrés progressivement sur `feature/application-streamlit`, par commits distincts :
+L'application Streamlit constitue une interface de **prédiction individuelle** : à partir des caractéristiques d'un client, elle applique les regroupements de l'ACM définitive, projette l'observation à l'aide du modèle ACM sauvegardé, puis utilise la régression logistique multinomiale pour attribuer l'un des cinq segments **G1 à G5**.
 
-1. **Commit 1 — Moteur de prédiction individuelle :** développé.
-2. **Commit 2 — Tests et validation :** développé.
-3. **Commit 3 — Première interface Streamlit :** développée ; correction des libellés et des modalités finales en cours de finalisation.
-4. **Commit 4 — Gestion de clients :** à développer (consultation, ajout, modification et stockage persistant).
-5. **Commit 5 — Finalisation et documentation :** à réaliser (contrôles finaux, ergonomie, instructions de livraison).
+Le formulaire présente directement les **modalités finales regroupées**, avec des questions en français et des libellés lisibles. Par exemple, une catégorie d'ancienneté s'affiche sous la forme « Plus de 2 ans » plutôt que sous son code technique. La conversion interne conserve les codes attendus par les modèles sauvegardés.
 
-Le formulaire utilise des modalités regroupées et lisibles, mais les valeurs transmises au moteur restent compatibles avec les métadonnées et les recodifications du modèle. La prise en charge des clients non éligibles et des modalités inconnues doit rester explicite, sans affectation forcée.
+Le résultat affiche le **groupe prédit, son nom métier et un tableau des cinq scores**. L'application ne recalcule ni la CAH ni l'ACM et ne réentraîne pas le classifieur. Les scores indiquent la répartition estimée entre les cinq groupes ; ils ne représentent pas un risque de churn et leur calibration n'a pas été évaluée.
 
-#### Point à vérifier avant la finalisation — unité de `valeur_12M`
+Cette version répond à l'objectif de **classer un nouveau client sans refaire la segmentation**. Elle ne conserve pas les données du formulaire dans une base persistante. La gestion d'un historique de clients constitue une fonctionnalité distincte et facultative.
 
-**Unité non confirmée :** la variable `valeur_12M_rec` est affichée comme « valeur du client sur les 12 derniers mois », avec des intervalles numériques. **La devise ou l'unité métier n'a pas été vérifiée dans la définition source des données.** Vérifier la documentation de `valeur_12M` avant d'ajouter un symbole monétaire (notamment `€`) ou de reformuler la question en montant dépensé. Cette vérification concerne l'affichage et la documentation ; elle ne doit pas modifier les codes de modalités envoyés à l'ACM.
+### Améliorations possibles — hors périmètre initial
+
+Deux évolutions sont identifiées, sans remettre en cause le fonctionnement actuel de la classification :
+
+1. **Préciser l'unité de la valeur client (`valeur_12M`).** La variable `valeur_12M_rec` est présentée sous forme d'intervalles numériques, mais la devise ou l'unité métier exacte n'a pas été confirmée à partir de la documentation source. Vérifier cette définition avant d'ajouter un symbole monétaire (par exemple `€`) ou de reformuler la question. Cette amélioration concerne les libellés et ne doit pas modifier les modalités transmises à l'ACM.
+
+2. **Ajouter une gestion persistante des clients (facultatif).** Dans une évolution ultérieure, l'application pourrait permettre d'enregistrer de nouveaux clients, de rechercher les clients historiques et de modifier leurs caractéristiques en recalculant leur segment. Un stockage local **SQLite** pourrait suffire pour un prototype ; une base externe pourrait être envisagée si les besoins de déploiement évoluent. Aucune base de données ni API n'est nécessaire pour la prédiction individuelle actuelle.
 
 ## Bonnes pratiques de collaboration
 
