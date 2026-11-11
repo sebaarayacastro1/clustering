@@ -25,4 +25,5 @@ jupyterlab==4.6.5
 # Tests automatisés
 pytest==9.2.0
 
-# Streamlit sera ajouté lors de l'étape 4, lorsque l'application sera créée.
+# Interface Streamlit : dépendance complémentaire définie dans app/requirements_streamlit.txt
+# Installation de l’application : python -m pip install -r app/requirements_streamlit.txt

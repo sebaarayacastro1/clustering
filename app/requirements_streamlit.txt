@@ -1,0 +1,3 @@
+# Dépendances de l’application Streamlit (lot 3)
+-r ../requirements.txt
+streamlit>=1.40,<2
